@@ -22,23 +22,47 @@ export default class PGClient{
         });
     }
 
-    async registerPackage(name, version, path){
+    async profileExist(profileData){
+        let { rows } = await this.client.query(
+            `select * from "Profiles" where "ProfileName" = $1`, 
+            [profileData.ProfileName]
+        );
+
+        return rows.length > 0;
+    }
+
+    async isProfileOwner(profileData){
+        let { rows } = await this.client.query(
+            `select * from "Profiles" where "ProfileName" = $1 and "ProfileSignature" = $2`, 
+            [profileData.ProfileName, profileData.Signature]
+        );
+
+        return rows.length > 0;
+    }
+
+    async createProfile(profileData){
+        await this.client.query(
+            `insert into "Profiles" ("ProfileName", "ProfileSignature") VALUES ($1, $2)`, 
+            [profileData.ProfileName, profileData.Signature]
+        )
+    }
+
+    async registerPackage(data){
         let { rows } = await this.client.query(
             `select * from "Packages" where "PackageName" = $1 and "PackageVersion" = $2`, 
-            [name, version]
+            [data.PackageName, data.PackageVersion]
         );
 
         if(rows.length > 0){
-            throw new Error(`Package "${name}" version "${version}" exist`);
-            rows.forEach(async row => {
-                await this.client.query('delete from "Packages" where "PackageId" = $1', [row.PackageId]);
+            rows.forEach(row => {
+                this.client.query(`delete from "Packages" where "PackageId" = $1`, [row.PackageId]);
             });
         }
 
-        return await this.client.query(
-            'insert into "Packages" ("PackageName", "PackageVersion", "PathToArchive") VALUES ($1, $2, $3) RETURNING "PackageId"',
-            [name, version, path]
-        );
+        return (await this.client.query(
+            `insert into "Packages" ("PackageName", "PackageVersion", "PathToArchive", "IsPublic") VALUES ($1, $2, $3, $4) RETURNING "PackageId"`,
+            [data.PackageName, data.PackageVersion, data.PathToArchive, data.IsPublic]
+        )).rows[0].PackageId;
     }
 
     async removePackage(name){
@@ -74,7 +98,14 @@ export default class PGClient{
         );
     }
 
-    async getPackages(PackageName = null, PackageVersion = null){
+    async addDownload(id){
+        this.client.query(
+            'update"Packages" set "Downloads" = "Downloads" + 1 where "PackageId" = $1',
+            [id]
+        );
+    }
+
+    async findPackage(PackageName = null, PackageVersion = null){
         let filter = {
             PackageName,
             PackageVersion
@@ -89,7 +120,7 @@ export default class PGClient{
                 switch(key){
                     case 'PackageVersion':
                         where.push(`"${key}" like $${findex++}`);
-                        parameters.push(filter[key].replace('*', '%'));
+                        parameters.push(filter[key].replace(/\*/g, '%'));
                         break;
                     default:
                         where.push(`"${key}" = $${findex++}`);
@@ -99,9 +130,23 @@ export default class PGClient{
         }
 
         return await this.client.query(
-            `select "PackageId", "PackageName", "PackageVersion", "Created" from "Packages"`
-            + (where.length > 0 ? ` where ${where.join(' and ')}` : ''),
+            `select "PackageId", "PackageName", "PackageVersion", "Created", "Downloads" from "Packages"`
+            + (where.length > 0 ? ` where ${where.join(' and ')}` : '') + ' order by "PackageVersion" desc limit 100',
             parameters
         );
+    }
+
+    async getPackages(page = 1, limit = 1000){
+        let offset = (page - 1) * limit;
+        return await this.client.query(
+            `select "PackageId", "PackageName", "PackageVersion", "IsPublic", "Created", "Downloads" from "Packages" offset $1 limit $2`,
+            [offset, limit]
+        );
+    }
+
+    async getTotal(){
+        return (await this.client.query(
+            `select count(*) as total from "Packages"`
+        )).rows[0].total;
     }
 }
