@@ -110,7 +110,7 @@ export default (app) => {
             PackageName,
             PackageVersion,
             IsPublic,
-            PathToArchive: `${process.cwd()}/${filedata.destination}/${fileName}`
+            PathToArchive: `${filedata.destination}/${fileName}`
         }
     
         fs.rename(`${filedata.destination}/${filedata.filename}`, `${filedata.destination}/${fileName}`, err => {
