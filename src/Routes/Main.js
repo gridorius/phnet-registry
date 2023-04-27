@@ -57,8 +57,15 @@ export default (app) => {
             }
         }
 
+        let readStream = fs.createReadStream(pack.PathToArchive);
+
+        resp.writeHead(200, {
+                'Content-Type': 'application/octet-stream',
+                'Content-Length': fs.statSync(pack.PathToArchive).size
+        });
+
+        readStream.pipe(resp);
         client.addDownload(pack.PackageId);
-        resp.download(pack.PathToArchive);
     });
     
     app.get('/find/package', (req, resp) => {
