@@ -60,8 +60,8 @@ export default class PGClient{
         }
 
         return (await this.client.query(
-            `insert into "Packages" ("PackageName", "PackageVersion", "PathToArchive", "IsPublic") VALUES ($1, $2, $3, $4) RETURNING "PackageId"`,
-            [data.PackageName, data.PackageVersion, data.PathToArchive, data.IsPublic]
+            `insert into "Packages" ("PackageName", "PackageVersion", "PathToArchive", "IsPublic", "PackageReferences") VALUES ($1, $2, $3, $4, $5) RETURNING "PackageId"`,
+            [data.PackageName, data.PackageVersion, data.PathToArchive, data.IsPublic, data.PackageReferences]
         )).rows[0].PackageId;
     }
 
@@ -130,7 +130,7 @@ export default class PGClient{
         }
 
         return await this.client.query(
-            `select "PackageId", "PackageName", "PackageVersion", "Created", "Downloads" from "Packages"`
+            `select "PackageId", "PackageName", "PackageVersion", "Created", "Downloads", "PackageReferences" from "Packages"`
             + (where.length > 0 ? ` where ${where.join(' and ')}` : '') + ' order by "PackageVersion" desc limit 100',
             parameters
         );
@@ -139,7 +139,7 @@ export default class PGClient{
     async getPackages(page = 1, limit = 1000){
         let offset = (page - 1) * limit;
         return await this.client.query(
-            `select "PackageId", "PackageName", "PackageVersion", "IsPublic", "Created", "Downloads" from "Packages" offset $1 limit $2`,
+            `select "PackageId", "PackageName", "PackageVersion", "IsPublic", "Created", "Downloads", "PackageReferences" from "Packages" offset $1 limit $2`,
             [offset, limit]
         );
     }

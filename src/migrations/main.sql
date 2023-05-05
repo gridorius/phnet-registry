@@ -3,6 +3,7 @@ CREATE TABLE IF NOT EXISTS "Packages"(
     "PackageName" varchar(300) not null,
     "PackageVersion" varchar(50) not null,
     "PathToArchive" varchar(500) not null,
+    "PackageReferences" json,
     "IsPublic" boolean not null default true,
     "Created" timestamp default current_timestamp,
     "Downloads" integer not null default 0,

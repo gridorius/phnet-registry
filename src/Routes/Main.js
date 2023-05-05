@@ -19,7 +19,10 @@ export default (app) => {
 
         resp.send({
             total,
-            items: rows
+            items: rows.map(row => {
+                row.PackageReferences = JSON.parse(row.PackageReferences);
+                return row;
+            })
         });
     });
     
@@ -70,13 +73,17 @@ export default (app) => {
     
     app.get('/find/package', (req, resp) => {
         client.findPackage(req.query.name, req.query.version).then(res => {
-            resp.send(res.rows);
+            resp.send(res.rows.map(row => {
+                row.PackageReferences = JSON.parse(row.PackageReferences);
+                return row;
+            }));
         });
     });
     
     app.post('/add/package', async (req, resp) => {
         let body = req.body;
         let PackageName = body.name;
+        let PackageReferences = JSON.stringify(body.references);
         let PackageVersion = body.version;
         let IsPublic = body.isPublic ?? true;
 
@@ -117,7 +124,8 @@ export default (app) => {
             PackageName,
             PackageVersion,
             IsPublic,
-            PathToArchive: `${filedata.destination}/${fileName}`
+            PathToArchive: `${filedata.destination}/${fileName}`,
+            PackageReferences
         }
     
         fs.rename(`${filedata.destination}/${filedata.filename}`, `${filedata.destination}/${fileName}`, err => {
